@@ -6,11 +6,10 @@ import os
 import json
 from dotenv import load_dotenv
 
-load_dotenv()  # Load environment variables from .env file
+load_dotenv()
 
 app = Flask(__name__)
 
-# 🔹 Database Configuration
 DB_USERNAME = os.getenv("DB_USERNAME")
 DB_PASSWORD = os.getenv("DB_PASSWORD")
 DB_HOST = os.getenv("DB_HOST")
@@ -20,7 +19,6 @@ app.config['SQLALCHEMY_DATABASE_URI'] = f'postgresql://{DB_USERNAME}:{DB_PASSWOR
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
-# 🔹 Booking Model
 class Booking(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, nullable=False)
@@ -28,11 +26,11 @@ class Booking(db.Model):
     tickets = db.Column(db.Integer, nullable=False)
     status = db.Column(db.String, default="PENDING")
 
-# 🔹 Create Tables
+#  Create Tables
 with app.app_context():
     db.create_all()
 
-# 🔹 Retrieve All Bookings
+#  Retrieve All Bookings
 @app.route('/bookings', methods=['GET'])
 def get_bookings():
     bookings = Booking.query.all()
@@ -44,7 +42,7 @@ def get_bookings():
         "status": b.status
     } for b in bookings])
 
-# 🔹 Booking Route
+#  Booking Route
 @app.route('/bookings', methods=['POST'])
 def book_ticket():
     data = request.json
@@ -55,7 +53,7 @@ def book_ticket():
     if not user_id or not event_id or not tickets:
         return jsonify({"error": "Missing required fields"}), 400
 
-    # 1️⃣ **Check Event Availability (Call Event Service)**
+    # Check Event Availability (Call Event Service)
     try:
         event_response = requests.get(f"http://localhost:8000/events/{event_id}")
         event_response.raise_for_status()
@@ -67,7 +65,7 @@ def book_ticket():
     if event["tickets_available"] < tickets:
         return jsonify({"error": "Not enough tickets available"}), 400
 
-    # 2️⃣ **Process Payment (Mock Payment API)**
+    # Process Payment (Mock Payment API)
     try:
         payment_response = requests.post("http://localhost:9000/payments", json={"user_id": user_id, "amount": tickets * 50})
         payment_response.raise_for_status()
@@ -79,7 +77,7 @@ def book_ticket():
     if payment_data.get("status") != "PAID":
         return jsonify({"error": "Payment failed"}), 400
 
-    # 3️⃣ **Update Event Tickets (Call Event Service)**
+    # Update Event Tickets (Call Event Service)
     try:
         update_tickets_response = requests.put(
             f"http://localhost:8000/events/{event_id}/update_tickets",
@@ -91,7 +89,7 @@ def book_ticket():
         print(f"❌ Event Ticket Update Error: {e}")
         return jsonify({"error": "Failed to update event tickets"}), 500
 
-    # 4️⃣ **Save Booking in Database**
+    # Save Booking in Database
     try:
         new_booking = Booking(user_id=user_id, event_id=event_id, tickets=tickets, status="CONFIRMED")
         db.session.add(new_booking)
@@ -101,12 +99,12 @@ def book_ticket():
         print(f"❌ Database Error: {e}")
         return jsonify({"error": "Database error"}), 500
 
-    # 5️⃣ **Notify User (RabbitMQ)**
+    # Notify User (RabbitMQ)
     send_notification(user_id, event_id)
 
     return jsonify({"message": "Booking successful", "booking_id": new_booking.id})
 
-# 🔹 **RabbitMQ Notification**
+# RabbitMQ Notification
 def send_notification(user_id, event_id):
     try:
         connection = pika.BlockingConnection(pika.ConnectionParameters('localhost'))
@@ -121,17 +119,17 @@ def send_notification(user_id, event_id):
         }
 
         channel.basic_publish(exchange='', routing_key='notification_queue', body=json.dumps(notification_data))
-        print(f"📢 Sent notification for User {user_id} - Event {event_id}")
+        print(f" Sent notification for User {user_id} - Event {event_id}")
 
         connection.close()
     except Exception as e:
-        print(f"⚠️ RabbitMQ Error: {e}")
+        print(f" RabbitMQ Error: {e}")
 
-# 🔹 **Home Route**
+# Home Route
 @app.route('/')
 def home():
     return {"message": "Welcome to the Booking Service!"}
 
-# 🔹 **Run Flask App**
+# Run Flask App
 if __name__ == '__main__':
     app.run(port=5000, debug=True)
