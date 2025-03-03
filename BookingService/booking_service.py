@@ -59,7 +59,7 @@ def book_ticket():
         event_response.raise_for_status()
         event = event_response.json()
     except requests.RequestException as e:
-        print(f"❌ Event Service Error: {e}")
+        print(f"Event Service Error: {e}")
         return jsonify({"error": "Event Service unavailable"}), 500
 
     if event["tickets_available"] < tickets:
@@ -71,7 +71,7 @@ def book_ticket():
         payment_response.raise_for_status()
         payment_data = payment_response.json()
     except requests.RequestException as e:
-        print(f"❌ Payment Service Error: {e}")
+        print(f"Payment Service Error: {e}")
         return jsonify({"error": "Payment Service unavailable"}), 500
 
     if payment_data.get("status") != "PAID":
@@ -86,7 +86,7 @@ def book_ticket():
         )
         update_tickets_response.raise_for_status()
     except requests.RequestException as e:
-        print(f"❌ Event Ticket Update Error: {e}")
+        print(f"Event Ticket Update Error: {e}")
         return jsonify({"error": "Failed to update event tickets"}), 500
 
     # Save Booking in Database
@@ -96,7 +96,7 @@ def book_ticket():
         db.session.commit()
     except Exception as e:
         db.session.rollback()
-        print(f"❌ Database Error: {e}")
+        print(f"Database Error: {e}")
         return jsonify({"error": "Database error"}), 500
 
     # Notify User (RabbitMQ)

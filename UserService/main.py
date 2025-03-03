@@ -2,7 +2,7 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, EmailStr
 from pymongo import MongoClient
 from bson import ObjectId
-import bcrypt
+import requests
 
 app = FastAPI()
 
@@ -17,50 +17,81 @@ class User(BaseModel):
     email: EmailStr
     password: str
 
-# Hash Password Function
-def hash_password(password: str) -> str:
-    salt = bcrypt.gensalt()
-    return bcrypt.hashpw(password.encode('utf-8'), salt).decode('utf-8')
+# Login Model
+class LoginRequest(BaseModel):
+    email: EmailStr
+    password: str
 
-# Register User
 @app.post("/register")
 async def register_user(user: User):
     if users_collection.find_one({"email": user.email}):
         raise HTTPException(status_code=400, detail="Email already exists")
 
-    hashed_password = hash_password(user.password)
-
     new_user = {
         "username": user.username,
         "email": user.email,
-        "password": hashed_password
+        "password": user.password 
     }
 
     users_collection.insert_one(new_user)
     return {"message": "User registered successfully"}
 
-# Get All Users (without passwords)
+@app.post("/login")
+async def login_user(login_request: LoginRequest):
+    """Logs in a user with a plain-text password check."""
+    user = users_collection.find_one({"email": login_request.email})
+
+    # Step 1: Check if user exists
+    if not user:
+        raise HTTPException(status_code=404, detail="User not registered")
+
+    # Step 2: Compare passwords directly (plain-text)
+    if login_request.password != user["password"]:
+        raise HTTPException(status_code=401, detail="Invalid password")
+
+    # Step 3: Return success message if credentials match
+    return {
+        "message": "Login successful",
+        "user": {
+            "_id": str(user["_id"]),
+            "username": user["username"],
+            "email": user["email"]
+        }
+    }
+
 @app.get("/users")
 async def get_users():
     users = list(users_collection.find({}, {"password": 0}))  # Exclude passwords
     for user in users:
         user["_id"] = str(user["_id"])  # Convert ObjectId to string
     return users
-import requests
-# Get events
+
 @app.get("/events")
 async def get_available_events():
-    response = requests.get("http://localhost:8000/events")
-    if response.status_code != 200:
+    try:
+        response = requests.get("http://localhost:8000/events")
+        response.raise_for_status()
+    except requests.RequestException as e:
+        print(f"Event Service Error: {e}")
         raise HTTPException(status_code=500, detail="Failed to fetch events")
+
     return response.json()
-# book events
+
+
 @app.post("/book_event")
 async def book_event(user_id: str, event_id: str, tickets: int):
-    response = requests.post(
-        "http://localhost:5000/bookings",
-        json={"user_id": user_id, "event_id": event_id, "tickets": tickets}
-    )
-    if response.status_code != 200:
+    """Books an event for a user by calling the Booking Service."""
+    if not users_collection.find_one({"_id": ObjectId(user_id)}):
+        raise HTTPException(status_code=404, detail="User not found")
+
+    try:
+        response = requests.post(
+            "http://localhost:5000/bookings",
+            json={"user_id": user_id, "event_id": event_id, "tickets": tickets}
+        )
+        response.raise_for_status()
+    except requests.RequestException as e:
+        print(f"Booking Service Error: {e}")
         raise HTTPException(status_code=500, detail="Booking failed")
+
     return response.json()
