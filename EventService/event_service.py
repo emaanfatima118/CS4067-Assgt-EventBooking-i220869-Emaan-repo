@@ -10,17 +10,17 @@ client = MongoClient("mongodb://localhost:27017/")
 db = client["event_db"]
 events_collection = db["events"]  # Collection to store events
 
-# ✅ Define a Pydantic Model for Ticket Updates
+# Define a Pydantic Model for Ticket Updates
 class TicketUpdate(BaseModel):
     tickets_sold: int
 
-# ✅ Endpoint to Get All Events
+# Endpoint to Get All Events
 @app.get("/events")
 def list_events():
     events = list(events_collection.find({}, {"_id": 0}))  # Exclude MongoDB ID
     return {"events": events}
 
-# ✅ Endpoint to Get a Single Event by ID
+# Endpoint to Get a Single Event by ID
 @app.get("/events/{event_id}")
 def get_event(event_id: str):
     try:
@@ -32,7 +32,7 @@ def get_event(event_id: str):
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Invalid event ID: {str(e)}")
 
-# ✅ Endpoint to Update Tickets After Booking
+# Endpoint to Update Tickets After Booking
 @app.put("/events/{event_id}/update_tickets")
 def update_event_tickets(event_id: str, update_data: TicketUpdate):
     try:
@@ -53,7 +53,7 @@ def update_event_tickets(event_id: str, update_data: TicketUpdate):
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Error updating tickets: {str(e)}")
 
-# ✅ Run the FastAPI application
+# Run the FastAPI application
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="127.0.0.1", port=8000)
