@@ -37,5 +37,5 @@ def send_email(user_email, message):
 # Consume Messages from RabbitMQ
 channel.basic_consume(queue='notification_queue', on_message_callback=callback, auto_ack=True)
 
-print("📡 Waiting for notifications...")
+print(" Waiting for notifications...")
 channel.start_consuming()
