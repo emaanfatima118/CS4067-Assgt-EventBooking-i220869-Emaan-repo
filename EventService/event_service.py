@@ -5,7 +5,7 @@ from pydantic import BaseModel
 
 app = FastAPI()
 
-# Connect to MongoDB
+#Connect to MongoDB
 client = MongoClient("mongodb://localhost:27017/")
 db = client["event_db"]
 events_collection = db["events"]  # Collection to store events
@@ -52,6 +52,22 @@ def update_event_tickets(event_id: str, update_data: TicketUpdate):
     
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Error updating tickets: {str(e)}")
+    
+@app.get("/events/{event_id}/availability")
+def check_event_availability(event_id: str):
+    try:
+        event = events_collection.find_one({"_id": ObjectId(event_id)})
+        if not event:
+            raise HTTPException(status_code=404, detail="Event not found")
+
+        if "tickets_available" not in event:
+            raise HTTPException(status_code=500, detail="Event does not have a 'tickets_available' field")
+
+        return {"event_id": str(event["_id"]), "tickets_available": event["tickets_available"]}
+    
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Error checking availability: {str(e)}")
+
 
 # Run the FastAPI application
 if __name__ == "__main__":
