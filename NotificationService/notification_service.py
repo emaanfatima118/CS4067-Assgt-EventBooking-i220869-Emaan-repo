@@ -2,7 +2,10 @@ import pika
 import json
 import smtplib
 from email.mime.text import MIMEText
+from dotenv import load_dotenv
 
+# Load environment variables from .env file
+load_dotenv()
 # Connect to RabbitMQ
 connection = pika.BlockingConnection(pika.ConnectionParameters('localhost'))
 channel = connection.channel()
@@ -19,9 +22,13 @@ def callback(ch, method, properties, body):
     message = f"Booking confirmed for Event {data['event_id']}!"
     send_email(user_email, message)
 
+
 def send_email(user_email, message):
-    sender_email = "i220869@nu.edu.pk"  # Update
-    password = "kgaa ghne zikh krtt"
+# Load environment variables from .env file
+
+# Retrieve values from .env
+    sender_email = os.getenv("SENDER_EMAIL")
+    password = os.getenv("EMAIL_PASSWORD")
 
     msg = MIMEText(message)
     msg["Subject"] = "Booking Confirmation"
