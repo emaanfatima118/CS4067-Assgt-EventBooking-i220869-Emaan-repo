@@ -6,14 +6,12 @@ from email.mime.text import MIMEText
 # Connect to RabbitMQ
 connection = pika.BlockingConnection(pika.ConnectionParameters('localhost'))
 channel = connection.channel()
-
-# Declare Queue
 channel.queue_declare(queue='notification_queue')
 
 def callback(ch, method, properties, body):
     data = json.loads(body)
-    
     user_email = data.get("user_email")
+    
     if not user_email:
         print("Missing user email!")
         return
@@ -22,8 +20,8 @@ def callback(ch, method, properties, body):
     send_email(user_email, message)
 
 def send_email(user_email, message):
-    sender_email = "your-email@gmail.com"  # Update your email
-    password = "your-generated-app-password"  # Use Google App Password
+    sender_email = "i220869@nu.edu.pk"  # Update
+    password = "kgaa ghne zikh krtt"
 
     msg = MIMEText(message)
     msg["Subject"] = "Booking Confirmation"
@@ -41,6 +39,5 @@ def send_email(user_email, message):
         print(f"Email failed: {e}")
 
 channel.basic_consume(queue='notification_queue', on_message_callback=callback, auto_ack=True)
-
 print("Waiting for notifications...")
 channel.start_consuming()

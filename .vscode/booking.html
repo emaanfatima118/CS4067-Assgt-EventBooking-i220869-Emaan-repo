@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Book Tickets</title>
+    <script defer src="script.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; padding: 0; background: linear-gradient(135deg, #764ba2, #667eea); text-align: center; }
+        .navbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #333;
+            padding: 15px 30px;
+            color: white;
+        }
+        .navbar a { color: white; text-decoration: none; margin: 0 15px; font-size: 18px; }
+        .navbar a:hover { text-decoration: underline; }
+        .container { width: 50%; margin: auto; padding: 20px; }
+        .form-container { background: linear-gradient(135deg, #764ba2, #667eea); padding: 20px; border-radius: 8px; box-shadow: 0px 0px 10px rgba(0,0,0,0.1); display: inline-block; text-align: left; }
+        .event-card {
+            width: 200px; /* Adjust width for smaller cards */
+            padding: 10px;
+            margin: 10px;
+            background: rgb(222, 211, 224);
+            border-radius: 8px;
+            box-shadow: 2px 2px 8px rgba(14, 10, 10, 0.1);
+            font-size: 14px;
+            display: inline-block; /* Makes cards sit next to each other */
+            text-align: center;
+        }
+        .event-card h4 { margin: 0; color: #04050a; }
+        .event-card p { margin: 5px 0; color: #0c0909; }
+        .btn { cursor: pointer; padding: 8px 12px; border: none; border-radius: 5px; color: white; }
+        .btn-book { background: #0c0d0e; }
+    </style>
+</head>
+<body>
+    <div class="navbar">
+        <div>
+            <a href="manage.html">Manage Events</a>
+        </div>
+        <a href="#" id="logout-btn" class="btn btn-logout">Logout</a>
+    </div>
+    
+    <h2>Available Events</h2>
+    <div class="event-container" id="events-list"></div>
+
+    <h2>Book Tickets</h2>
+    <form id="booking-form" class="form-container">
+        <label>Event ID:</label>
+        <input type="text" id="event_id" required>
+        <label>Tickets:</label>
+        <input type="number" id="tickets" min="1" required>
+        <button type="submit">Book Now</button>
+    </form>
+
+    <script>
+        // Logout button logic
+        document.addEventListener("DOMContentLoaded", function () {
+            const logoutButton = document.getElementById("logout-btn");
+
+            if (logoutButton) {
+                logoutButton.addEventListener("click", function (event) {
+                    event.preventDefault(); // Prevent default link behavior
+
+                    // Clear authentication data (adjust based on your auth mechanism)
+                    localStorage.removeItem("token"); // Example for token-based auth
+                    sessionStorage.removeItem("token");
+
+                    // Redirect to login page
+                    window.location.href = "login.html";
+                });
+            }
+        });
+
+        fetchEvents();
+    </script>
+</body>
+</html>

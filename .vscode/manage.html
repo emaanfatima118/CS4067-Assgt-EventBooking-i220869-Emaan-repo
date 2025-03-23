@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Event Management</title>
+    <script defer src="script.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; padding: 0;   background: linear-gradient(135deg, #764ba2, #667eea); }
+        .navbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #333;
+            padding: 15px 30px;
+            color: white;
+        }
+        .navbar a { color: white; text-decoration: none; margin: 0 15px; font-size: 18px; }
+        .navbar a:hover { text-decoration: underline; }
+        .container { width: 60%; margin: auto; padding: 20px; }
+        .form-container { background: white; padding: 20px; border-radius: 8px; box-shadow: 0px 0px 10px rgba(0,0,0,0.1); }
+        .event-card {
+    width: 200px; /* Adjust width for smaller cards */
+    padding: 10px;
+    margin: 10px;
+    background: #f9f9f9;
+    border-radius: 8px;
+    box-shadow: 2px 2px 8px rgba(0, 0, 0, 0.1);
+    font-size: 14px;
+    display: inline-block; /* Makes cards sit next to each other */
+    text-align: center;
+}
+        .event-card h4 { margin: 0; color: #333; }
+        .event-card p { margin: 5px 0; color: #666; }
+        .btn { cursor: pointer; padding: 8px 12px; border: none; border-radius: 5px; color: white; margin-top: 10px; }
+        .btn-add {  background: linear-gradient(135deg, #764ba2, #667eea); }
+        .btn-delete {  background: linear-gradient(135deg, #764ba2, #667eea); }
+    </style>
+</head>
+<body>
+    <div class="navbar">
+        <div>
+            <a href="manage.html">Manage Events</a>
+          
+        </div>
+        <a href="#" id="logout-btn" class="btn btn-logout">Logout</a>
+    </div>
+    
+    <div class="container">
+        <h2>Manage Events</h2>
+        <div class="form-container">
+            <form id="addEventForm">
+                <input type="text" id="eventName" placeholder="Event Name" required>
+                <input type="text" id="eventDescription" placeholder="Description" required>
+                <input type="date" id="eventDate" required>
+                <input type="text" id="eventLocation" placeholder="Location" required>
+                <input type="number" id="eventTickets" placeholder="Tickets Available" required>
+                <button type="submit" class="btn btn-add">Add Event</button>
+            </form>
+        </div>
+        
+        <h3>Existing Events</h3>
+        <div id="eventsList"></div>
+    </div>
+    
+    <script>
+       document.addEventListener("DOMContentLoaded", function () {
+    const eventsList = document.getElementById("eventsList");
+    const addEventForm = document.getElementById("addEventForm");
+    const logoutButton = document.getElementById("logout-btn");
+
+    async function fetchEvents() {
+        const token = localStorage.getItem("token") || sessionStorage.getItem("token");
+        if (!token) {
+            window.location.href = "login.html"; // Redirect if not logged in
+            return;
+        }
+
+        try {
+            // First fetch the list of all events
+            const response = await fetch("http://127.0.0.1:8000/events", {
+                headers: { "Authorization": `Bearer ${token}` }
+            });
+
+            if (!response.ok) throw new Error("Failed to fetch events");
+            
+            const data = await response.json();
+            
+            // Create an array of promises to fetch detailed information for each event
+            const detailPromises = data.events.map(event => 
+                fetch(`http://127.0.0.1:8000/events/${event._id}`, {
+                    headers: { "Authorization": `Bearer ${token}` }
+                }).then(res => {
+                    if (!res.ok) throw new Error(`Failed to fetch details for event ${event._id}`);
+                    return res.json();
+                })
+            );
+            
+            // Wait for all detail requests to complete
+            const eventDetails = await Promise.all(detailPromises);
+            
+            // Clear existing events and display the detailed events
+            eventsList.innerHTML = "";
+            eventDetails.forEach(event => {
+                const eventCard = document.createElement("div");
+                eventCard.classList.add("event-card");
+                eventCard.innerHTML = `
+                    <h4>${event.name}</h4>
+                    <p><strong>Date:</strong> ${event.date}</p>
+                    <p><strong>Location:</strong> ${event.location}</p>
+                    <p><strong>Description:</strong> ${event.description}</p>
+                    <p><strong>Tickets Available:</strong> ${event.tickets_available}</p>
+                    <button class="btn btn-delete" data-id="${event._id}">Delete</button>
+                `;
+                eventsList.appendChild(eventCard);
+            });
+        } catch (error) {
+            console.error("Error fetching events:", error);
+            eventsList.innerHTML = `<p>Error loading events: ${error.message}</p>`;
+        }
+    }
+
+    addEventForm.addEventListener("submit", async function (e) {
+        e.preventDefault();
+        const token = localStorage.getItem("token") || sessionStorage.getItem("token");
+        if (!token) {
+            alert("Unauthorized! Please log in again.");
+            window.location.href = "login.html";
+            return;
+        }
+
+        const newEvent = {
+            name: document.getElementById("eventName").value,
+            description: document.getElementById("eventDescription").value,
+            date: document.getElementById("eventDate").value,
+            location: document.getElementById("eventLocation").value,
+            tickets_available: parseInt(document.getElementById("eventTickets").value)
+        };
+
+        try {
+            const response = await fetch("http://127.0.0.1:8000/events", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${token}`
+                },
+                body: JSON.stringify(newEvent)
+            });
+
+            if (!response.ok) throw new Error("Failed to add event");
+
+            fetchEvents();
+            addEventForm.reset();
+        } catch (error) {
+            console.error("Error adding event:", error);
+        }
+    });
+
+    eventsList.addEventListener("click", async function (e) {
+        if (e.target.classList.contains("btn-delete")) {
+            const eventId = e.target.getAttribute("data-id");
+            console.log("Deleting event with ID:", eventId);  // Debugging
+
+            const token = localStorage.getItem("token") || sessionStorage.getItem("token");
+            if (!token) {
+                alert("Unauthorized! Please log in again.");
+                window.location.href = "login.html";
+                return;
+            }
+
+            try {
+                const response = await fetch(`http://127.0.0.1:8000/events/${eventId}`, {
+                    method: "DELETE",
+                    headers: { "Authorization": `Bearer ${token}` }
+                });
+
+                console.log("Response status:", response.status);
+                if (!response.ok) throw new Error("Failed to delete event");
+
+                fetchEvents();
+            } catch (error) {
+                console.error("Error deleting event:", error);
+            }
+        }
+    });
+
+    // Logout logic
+    if (logoutButton) {
+        logoutButton.addEventListener("click", function (event) {
+            event.preventDefault();
+            localStorage.removeItem("token");
+            sessionStorage.removeItem("token");
+            window.location.href = "login.html";
+        });
+    }
+
+    fetchEvents();
+});
+    </script>
+    
+</body>
+</html>
